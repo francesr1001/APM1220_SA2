@@ -1,0 +1,260 @@
+---
+title: "SA2 Applied Multivariate Part 1"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: true
+---
+\textbf{-Summative Assessment 2}
+
+\newpage
+\section{The Dataset:}
+
+```{r , include=FALSE}
+rehab_data <- "C:/Users/asus/Documents/ALL FEU FILES/FEU FOLDER 7/APPLIED MULTIVARIATE/SA2/rehab_data.csv"
+rehab_data_df <- read.csv(rehab_data)
+    
+
+
+```
+
+
+
+```{r }
+
+head(rehab_data_df) 
+colnames(rehab_data_df) 
+```
+
+\subsubsection{Description:} 
+The dataset used 'rehab_data' is the data that contains the participant's ID, physical_health, program, and psychological_wellbeing. 
+
+
+\newpage
+\section{Check assumptions: MANOVA}
+
+
+\subsection{Adequate Sample Size}
+```{r }
+table(rehab_data_df$program)
+
+
+```
+\subsubsection{Findings:} 
+According to this, we have 3 groups namely A,B, and C. While the indicated group are the number of population of participants in each group. 
+
+
+\subsection{Absence of Univariate or Multivariate Outliers}
+```{r }
+par(mfrow = c(1, 2))
+
+boxplot(rehab_data_df$physical_health, main = "Physical Health Score", col = "lightblue")
+boxplot(rehab_data_df$psychological_wellbeing, main = "Psychological Wellbeing Score", col = "green")
+par(mfrow = c(1, 1))
+
+```
+\subsubsection{Findings:} 
+The boxplots demonstrate that the distributions of the **Psychological Wellbeing Score** and the **Physical Health Score** are very similar, with the majority of the data falling between the 50th and 90th percentiles. The dots above the boxes show the presence of outliers. Furthermore, each variable displays a balanced range of values, and the score distribution appears to be consistent between the two variables.
+
+\subsection{Shapiro-Wilk Tormality Test}
+
+```{r , warning = FALSE, include=FALSE}
+
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+# Shapiro-Wilk normality test for physical_health
+shapiro_physical_health <- shapiro.test(rehab_data_df$physical_health)
+
+# Shapiro-Wilk normality test for psychological_wellbeing
+shapiro_psychological_wellbeing <- shapiro.test(rehab_data_df$psychological_wellbeing)
+
+# Display Shapiro-Wilk results
+shapiro_physical_health
+shapiro_psychological_wellbeing
+
+```
+
+
+```{r , warning = FALSE}
+
+shapiro_physical_health
+shapiro_psychological_wellbeing
+
+```
+\subsubsection{Findings:} 
+The Shapiro-Wilk test for **Physical Health Scores** indicates a p-value of 0.9809, suggesting that the data follows a normal distribution. However, for **Psychological Wellbeing Scores**, the test yields a p-value of 0.03868, which is below the standard significance level of 0.05, indicating a deviation from normality. These results imply that further analyses, such as MANOVA, should carefully consider the non-normality of psychological wellbeing scores or use robust methods.
+
+
+\newpage
+\subsection{Q-Q Plots for Visual of Normality}
+```{r }
+
+# Q-Q plot for physical_health
+qqnorm(rehab_data_df$physical_health)
+qqline(rehab_data_df$physical_health, col = "red")
+
+# Q-Q plot for psychological_wellbeing
+qqnorm(rehab_data_df$psychological_wellbeing)
+qqline(rehab_data_df$psychological_wellbeing, col = "red")
+
+```
+\subsubsection{Findings:} 
+As we can see, the normality in the two Q-Q plots aligns well with the red line for **Physical Health Scores**, indicating that the data is approximately normally distributed. However, the Q-Q plot for **Psychological Wellbeing Scores** shows slight deviations from the red line, particularly at the tails, further supporting the Shapiro-Wilk test results that suggest non-normality. This confirms the need to either transform the data or use non-parametric methods for further analysis involving psychological wellbeing scores.
+
+\subsection{Shapiro-Wilk test in Each Group}
+```{r, include=FALSE}
+
+# Normality assessment function for each program
+normality_assessment_program <- function(data, program_type) {
+  program_data <- data %>%
+    filter(program == program_type)
+  
+  shapiro_physical_health <- shapiro.test(program_data$physical_health)
+  shapiro_psychological_wellbeing <- shapiro.test(program_data$psychological_wellbeing)
+  
+  return(list(physical_health = shapiro_physical_health, 
+              psychological_wellbeing = shapiro_psychological_wellbeing))
+}
+
+# Perform normality assessment for each program group
+results <- list()
+for (program in unique(rehab_data_df$program)) {
+  results[[program]] <- normality_assessment_program(rehab_data_df, program)
+}
+
+results
+
+```
+```{r}
+
+
+results
+
+```
+\subsubsection{Findings:} 
+1. For **Program A** and **Program B**, both physical health and psychological wellbeing scores show no evidence of deviation from normality, as all p-values are greater than 0.05.  
+2. For **Program C**, physical health scores are approximately normally distributed (p-value = 0.8476), but psychological wellbeing scores show significant deviation from normality (p-value = 0.01417).  
+3. Overall, most of the data appear to meet the normality assumption, except for psychological wellbeing scores in Program C, which may require further adjustments or non-parametric analysis.  
+
+\newpage
+\subsection{Linearity}
+
+
+```{r }
+plot(rehab_data_df$physical_health, rehab_data_df$psychological_wellbeing, 
+     xlab = "Physical Health Score", ylab = "Psychological Wellbeing Score", 
+     main = "Scatter Plot of Physical vs Psychological Scores")
+
+```
+\subsubsection{Findings:}
+The scatter plot shows the relationship between physical health scores and psychological wellbeing scores, with points scattered across the plot. Additionally, the data points exhibit variability, with some outliers at both high and low ranges of scores, indicating that other factors might influence these scores.  
+
+\subsection{Homogeneity of Variances and Covariance}
+```{r, warning=FALSE}
+
+library(car)
+leveneTest(physical_health ~ program, data = rehab_data_df)
+leveneTest(psychological_wellbeing ~ program, data = rehab_data_df)
+library(biotools)
+boxM(rehab_data_df[, c("physical_health", "psychological_wellbeing")], rehab_data_df$program)
+
+
+```
+\subsubsection{Findings:}
+The results of **Levene's Test for Homogeneity of Variance** show that the variances across groups are not significantly different for both tests (F(2, 87) = 1.0087, p = 0.3689 and F(2, 87) = 1.6497, p = 0.1981). Similarly, **Box's M-test for Homogeneity of Covariance Matrices** indicates no significant differences in covariance matrices across groups (Chi-Sq = 6.6998, df = 6, p = 0.3495). These results suggest that the assumption of homogeneity of variance and covariance is **satisfied** for the data.
+
+
+
+\newpage
+\section{Fitting MANOVA Model}
+
+
+```{r }
+# Fit MANOVA model
+manova_model <- manova(cbind(physical_health, psychological_wellbeing) ~ program, data = rehab_data_df)
+
+summary(manova_model, test = "Pillai")
+
+
+```
+\subsubsection{Findings:}
+The **MANOVA results** using Pillai's trace indicate that the effect of the program on the combination of physical health and psychological wellbeing scores is **statistically significant** (Pillai = 0.28046, F(4, 174) = 7.0948, p < 0.001). This suggests that the program has a significant impact on the two dependent variables.
+
+
+
+\section{The ANOVA and Post-Hoc Tests}
+
+
+```{r }
+# Perform ANOVA for each dependent variable
+anova_physical <- aov(physical_health ~ program, data = rehab_data_df)
+summary(anova_physical)
+
+anova_psychological <- aov(psychological_wellbeing ~ program, data = rehab_data_df)
+summary(anova_psychological)
+
+# Tukey's HSD for pairwise comparisons
+tukey_physical <- TukeyHSD(anova_physical)
+tukey_psychological <- TukeyHSD(anova_psychological)
+
+# Display Tukey's HSD results
+tukey_physical
+tukey_psychological
+
+
+```
+\subsubsection{Findings:}
+The ANOVA results reveal that the **program significantly affects both physical health** (F(2, 87) = 7.595, p < 0.001) and **psychological wellbeing** (F(2, 87) = 8.607, p < 0.001). Tukey's HSD post-hoc tests show that **Program C significantly improves both physical health and psychological wellbeing** compared to Program A, with p-values of 0.0008 and 0.0005, respectively. Additionally, **Program C outperforms Program B in psychological wellbeing** (p = 0.008), but there is no significant difference in physical health between these two programs.
+
+
+\newpage
+\section{Additional Visualizations}
+\subsection{Boxplot of Physical Health Scores by Program}
+
+```{r }
+library(ggplot2)
+ggplot(rehab_data_df, aes(x = program, y = physical_health)) + 
+  geom_boxplot() + 
+  ggtitle("Boxplot of Physical Health Scores by Program") +
+  xlab("Program") + ylab("Physical Health Score")
+```
+\subsubsection{Findings:}
+The boxplot illustrates the distribution of physical health scores across the three programs (A, B, and C). **Program C exhibits the highest median score**, followed by Program B, while **Program A has the lowest median score** with a narrower interquartile range. There are a few outliers observed in both Program B and Program C, indicating variability in individual responses within these programs.
+
+\newpage
+\subsection{Boxplot of Psychological Wellbeing Scores by Program}
+
+```{r }
+
+ggplot(rehab_data_df, aes(x = program, y = psychological_wellbeing)) + 
+  geom_boxplot() + 
+  ggtitle("Boxplot of Psychological Wellbeing Scores by Program") +
+  xlab("Program") + ylab("Psychological Wellbeing Score")
+
+
+```
+\subsubsection{Findings:}
+Here now in our **Boxplot of Psychological Wellbeing Scores by Program**, just like on a previous plot Program C also seems to show an oulier indicating variability. However, Program C maintain still as the highest program apart the 2.
+
+
+\newpage
+\subsection{Scatter Plot of Physical vs. Psychological Scores by Program}
+```{r }
+
+
+ggplot(rehab_data_df, aes(x = physical_health, y = psychological_wellbeing, color = program)) + 
+  geom_point() + 
+  ggtitle("Scatter Plot of Physical vs. Psychological Scores by Program") +
+  xlab("Physical Health Score") + ylab("Psychological Wellbeing Score")
+
+
+```
+\subsubsection{Findings:}
+Using the scatter plot, it is more clear here that **Program C contains a scatter variables** in which what indicate a greater outlier on our previous outlines.
+
+
+
+
+
